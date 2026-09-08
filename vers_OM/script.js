@@ -7,7 +7,6 @@ const engine = new liquidjs.Liquid({ jsTruthy: true });
 
 let options = null;
 let currentRecord = null;
-let currentURL = null;
 let previousHtml = "";
 let refreshTimer = null;
 
@@ -39,14 +38,18 @@ grist.onOptions(opts => {
 });
 
 // ── RÉCEPTION DU RECORD COURANT ─────────────────────────────────────────────
+let debounceTimer;
 grist.onRecord(rec => {
     currentRecord = rec;
-    if (!options) return;
-    if (!options.templateColumnId) {
-        openConfig();
-    } else {
-        render();
-    }
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        if (!options) return;
+        if (!options.templateColumnId) {
+            openConfig();
+        } else {
+            render();
+        }
+    }, 400);
 }, { includeColumns: "shown" });
 
 // ── RENDU ───────────────────────────────────────────────────────────────────
@@ -106,9 +109,10 @@ async function render() {
     lastScrollY = widgetWindow.scrollY || 0;
     lastScrollX = widgetWindow.scrollX || 0;
 
-    if (currentURL) URL.revokeObjectURL(currentURL);
-    currentURL = URL.createObjectURL(new Blob([cleanUpHtml(html)], { type: "text/html" }));
-    container.src = currentURL;
+    const doc = container.contentDocument;
+    doc.open();
+    doc.write(cleanUpHtml(html));
+    doc.close();
     container.style.display = "";
     settings.innerHTML = "";
     document.getElementById("print").style.display = "block";
